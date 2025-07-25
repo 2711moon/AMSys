@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}New Asset | Asset Management System{% endblock %}
+
+{% block content %}
+<div class="card mx-auto shadow-sm" style="max-width: 600px;">
+  <div class="card-header text-white" style="background-color: #432351;">
+    <h5 class="mb-0">{{ 'Edit' if editing else 'Add New' }} Asset</h5>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('main.create_asset') if not editing else url_for('main.edit_asset', asset_id=asset_id) }}" autocomplete="off" id="asset-form">
+      {{ form.csrf_token }}
+
+      <!-- Asset Type -->
+      <div class="mb-3">
+        {{ form.category.label(class="form-label") }}
+        {{ form.category(class="form-select", id="asset-type") }}
+        <div class="invalid-feedback" id="category-error"></div>
+      </div>
+
+      <!-- Optional New Type (only visible when "Add New Type" is selected) -->
+      <div class="mb-3" id="new-type-wrapper" hidden>
+        {{ form.new_type.label(class="form-label") }}
+        {{ form.new_type(class="form-control", placeholder="e.g. Scanner") }}
+        <div class="invalid-feedback" id="new-type-error"></div>
+      </div>
+
+      <!-- Asset Name -->
+      <div class="mb-3">
+        {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control", placeholder="e.g. HP EliteBook") }}
+        <div class="invalid-feedback" id="name-error"></div>
+      </div>
+
+      <!-- Dynamic Fields -->
+      <div id="dynamic-fields"></div>
+
+      <!-- Status -->
+      <div class="mb-3">
+        {{ form.status.label(class="form-label") }}
+        {{ form.status(class="form-select") }}
+        <div class="invalid-feedback" id="status-error"></div>
+      </div>
+      
+      <!-- Remarks -->
+      <div class="mb-3">
+        {{ form.remarks.label(class="form-label") }}
+        {{ form.remarks(class="form-control", placeholder="Optional notes or comments...") }}
+      </div>
+
+      <button type="submit" class="btn w-100 mt-3" id="submit-btn" disabled>
+        <i class="bi bi-save me-1"></i> Save Asset
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const existingAssetData = {{ asset_data | default({}) | tojson | safe }};
+</script>
+
+<script>
+  const form = document.getElementById('asset-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const typeSelect = document.getElementById('asset-type');
+  const newTypeWrapper = document.getElementById('new-type-wrapper');
+  const dynamicFieldsContainer = document.getElementById('dynamic-fields');
+
+  const fieldConfigs = [
+    { label: "Third party code", name: "third_party_code", type: "text", validator: (value) => !value || /^\d+$/.test(value) },
+    { label: "User code", name: "user_code", type: "text", validator: (value) => !value || /^\d+$/.test(value) },
+    { label: "Area", name: "area", type: "text", validator: (value) => !value || /^[A-Za-z ]+$/.test(value) },
+    { label: "Username", name: "username", type: "text", validator: (value) => !value || /^[A-Za-z ]+$/.test(value) },
+    { label: "Given date", name: "given_date", type: "date", validator: (value) => !value || value },
+    { label: "Owner", name: "owner", type: "text", validator: (value) => !value || /^[A-Za-z ]+$/.test(value) },
+    { label: "License", name: "license", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "OS", name: "os", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "System", name: "system", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "System manufacturer", name: "system_manufacturer", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "Serial no.", name: "serial_no", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "Processor", name: "processor", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "RAM", name: "ram", type: "text", validator: (value) => !value || /^\d+$/.test(value) },
+    { label: "Harddisk", name: "harddisk", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "Specification", name: "specification", type: "select", options: ["new", "refurbished"], validator: (value) => value === "new" || value === "refurbished" },
+    { label: "Date of purchase", name: "purchase_date", type: "date", validator: (value) => !value || value },
+    { label: "Vendor", name: "vendor", type: "text", validator: (value) => !value || value.length > 0 },
+    { label: "Invoice no.", name: "invoice_no", type: "text", validator: (value) => !value || /^\d+$/.test(value) },
+    { label: "Amount", name: "amount", type: "text", validator: (value) => !value || value.length > 0 }
+  ];
+
+  function renderDynamicFields() {
+    dynamicFieldsContainer.innerHTML = '';
+
+    fieldConfigs.forEach((field, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mb-3';
+
+      const label = document.createElement('label');
+      label.className = 'form-label';
+      label.textContent = field.label;
+
+      let input;
+      if (field.type === "select") {
+        input = document.createElement('select');
+        input.className = 'form-select';
+        input.name = field.name;
+
+        field.options.forEach(optionText => {
+          const opt = document.createElement('option');
+          opt.value = optionText;
+          opt.textContent = optionText;
+          input.appendChild(opt);
+        });
+      } else {
+        input = document.createElement('input');
+        input.className = 'form-control';
+        input.name = field.name;
+        input.type = field.type;
+      }
+
+      const errorElement = document.createElement('div');
+      errorElement.className = 'invalid-feedback';
+      errorElement.id = `${field.name}-error`;
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(input);
+      wrapper.appendChild(errorElement);
+      dynamicFieldsContainer.appendChild(wrapper);
+
+      input.setAttribute('tabindex', index + 1);
+    });
+
+    enhanceFields();
+    prepopulateForm();
+  }
+
+  function prepopulateForm() {
+    if (!existingAssetData) return;
+
+    fieldConfigs.forEach((field) => {
+      const input = document.querySelector(`[name="${field.name}"]`);
+      if (!input) return;
+
+      const value = existingAssetData[field.name];
+      if (field.type === 'date' && value) {
+        let formatted = value;
+        if (typeof value === 'string' && value.includes('T')) {
+          formatted = value.split('T')[0];
+        }
+        input.value = formatted;
+      } else {
+        input.value = value ?? '';
+      }
+
+    });
+
+    // Also set standard fields
+    const category = document.querySelector('[name="category"]');
+    if (category && existingAssetData.category) {
+      category.value = existingAssetData.category;
+    }
+
+    const status = document.querySelector('[name="status"]');
+    if (status && existingAssetData.status) {
+      status.value = existingAssetData.status;
+    }
+
+    const remarks = document.querySelector('[name="remarks"]');
+    if (remarks && existingAssetData.remarks) {
+      remarks.value = existingAssetData.remarks;
+    }
+
+    const name = document.querySelector('[name="name"]');
+    if (name && existingAssetData.name) {
+      name.value = existingAssetData.name;
+    }
+  }
+
+  function validateField(field) {
+    const value = field.value;
+    const config = fieldConfigs.find(f => f.name === field.name);
+    const errorElement = document.getElementById(`${field.name}-error`);
+    const isValid = config.validator(value);
+
+    if (isValid) {
+      errorElement.innerHTML = "";
+      field.classList.remove('is-invalid');
+      field.classList.add('is-valid');
+    } else {
+      errorElement.innerHTML = `Invalid ${config.label}`;
+      field.classList.remove('is-valid');
+      field.classList.add('is-invalid');
+    }
+
+    checkFormValidity();
+  }
+
+  function checkFormValidity() {
+    const isValid = Array.from(form.elements).every(field => {
+      if (field.type === "submit") return true;
+      if (!field.name || !field.classList.contains('form-control') && !field.classList.contains('form-select')) return true;
+      return field.checkValidity();
+    });
+
+    submitBtn.disabled = !isValid;
+  }
+
+  function enhanceFields() {
+    const today = new Date().toISOString().split('T')[0];
+
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+      input.max = today;
+      input.addEventListener('change', () => {
+        const date = new Date(input.value);
+        if (date > new Date()) {
+          alert("Future dates are not allowed.");
+          input.value = "";
+        }
+      });
+    });
+
+    const amountField = document.querySelector('input[name="amount"]');
+    if (amountField) {
+      amountField.addEventListener('blur', () => {
+        const raw = amountField.value.replace(/[^\d.]/g, "");
+        if (raw) {
+          const num = parseFloat(raw);
+          if (!isNaN(num)) {
+            amountField.value = num.toLocaleString('en-IN', {
+              style: 'currency',
+              currency: 'INR',
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+
+            const usdValue = num * 0.012;
+            amountField.setAttribute('data-usd', `($${usdValue.toFixed(2)})`);
+          }
+        };
+      });
+
+      amountField.addEventListener('focus', () => {
+        amountField.value = amountField.value.replace(/[^\d.]/g, '');
+      });
+    }
+  }
+
+  form.addEventListener('input', (event) => {
+    if (event.target.name) {
+      validateField(event.target);
+    }
+  });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    renderDynamicFields();
+    // Delay prepopulateForm until DOM is ready
+    setTimeout(() => {
+      prepopulateForm();
+    }, 0);
+  });
+</script>
+{% endblock %}
+

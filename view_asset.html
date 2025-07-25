@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}View Asset{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-11 col-lg-10 col-xl-9"> <!-- Responsive width -->
+      <div class="card shadow-lg rounded-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Asset Details</h5>
+          <a href="{{ url_for('main.dashboard') }}" class="btn btn-sm btn-light">
+            <i class="bi bi-arrow-left"></i> Back
+          </a>
+        </div>
+
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Asset ID:</strong> <code>{{ asset.get('_id') }}</code></p>
+              <p><strong>Third Party Code:</strong> {{ asset.get('third_party_code', '—') }}</p>
+              <p><strong>User Code:</strong> {{ asset.get('user_code', '—') }}</p>
+              <p><strong>Name:</strong> {{ asset.get('name', '—') }}</p>
+              <p><strong>Type:</strong> {{ asset.get('category', '—') }}</p>
+              <p><strong>Owner:</strong> {{ asset.get('owner', '—') }}</p>
+              <p><strong>Area:</strong> {{ asset.get('area', '—') }}</p>
+              <p><strong>Username:</strong> {{ asset.get('username', '—') }}</p>
+              <p><strong>Given Date:</strong> 
+                {% if asset.get('given_date') %}
+                  {% if asset.given_date.__class__.__name__ == 'datetime' %}
+                    {{ asset.given_date.strftime('%d-%m-%Y') }}
+                  {% else %}
+                    {{ asset.given_date }}
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </p>
+              <p><strong>License:</strong> {{ asset.get('license', '—') }}</p>
+            </div>
+
+            <div class="col-md-6">
+              <p><strong>OS:</strong> {{ asset.get('os', '—') }}</p>
+              <p><strong>System:</strong> {{ asset.get('system', '—') }}</p>
+              <p><strong>System Manufacturer:</strong> {{ asset.get('system_manufacturer', '—') }}</p>
+              <p><strong>Serial No.:</strong> {{ asset.get('serial_no', '—') }}</p>
+              <p><strong>Processor:</strong> {{ asset.get('processor', '—') }}</p>
+              <p><strong>RAM:</strong> {{ asset.get('ram', '—') }}</p>
+              <p><strong>Harddisk:</strong> {{ asset.get('harddisk', '—') }}</p>
+              <p><strong>Specification:</strong> {{ asset.get('specification', '—') }}</p>
+              <p><strong>Date of Purchase:</strong> 
+                {% if asset.get('purchase_date') %}
+                  {% if asset.purchase_date.__class__.__name__ in ['datetime', 'date'] %}
+                    {{ asset.purchase_date.strftime('%d-%m-%Y') }}
+                  {% else %}
+                    {{ asset.purchase_date }}  
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </p>
+              <p><strong>Vendor:</strong> {{ asset.get('vendor', '—') }}</p>
+              <p><strong>Invoice No.:</strong> {{ asset.get('invoice_no', '—') }}</p>
+              <p><strong>Amount:</strong> {{ asset.get('amount', '—') }}</p>
+              <p><strong>Status:</strong> {{ asset.get('status', '—') }}</p>
+              <p><strong>Remarks:</strong> {{ asset.get('remarks', '—') }}</p>
+            </div>
+          </div>
+
+          <div class="text-center mt-4">
+            <a href="{{ url_for('main.edit_asset', asset_id=asset['_id']) }}" class="btn btn-warning">Edit</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
